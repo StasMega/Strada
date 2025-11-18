@@ -7,5 +7,3 @@ Main features as of Beta 0.1
 - Track Tallinn trams location in real time
 - Your location
 - Zoom in and out
-
-That's it for now, UI coming soon
