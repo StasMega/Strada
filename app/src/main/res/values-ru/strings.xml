@@ -1,0 +1,34 @@
+<resources>
+    <string name="app_name">Strada</string>
+    <string name="nav_map">Карта</string>
+    <string name="nav_schedule">Расписание</string>
+    <string name="nav_settings">Настройки</string>
+    <string name="settings_transport">Транспорт</string>
+    <string name="settings_show_bus">Показывать автобусы</string>
+    <string name="settings_show_tram">Показывать трамваи</string>
+    <string name="settings_appearance">Внешний вид</string>
+    <string name="settings_theme_system">Системная тема</string>
+    <string name="settings_theme_light">Светлая тема</string>
+    <string name="settings_theme_dark">Темная тема</string>
+    <string name="settings_language">Язык</string>
+    <string name="lang_dialog_title">Смена языка</string>
+    <string name="lang_dialog_desc">Приложению потребуется перезагрузка для смены языка. Продолжить</string>
+    <string name="lang_dialog_ok">Перезапустить</string>
+    <string name="lang_dialog_cancel">Отмена</string>
+    <string name="search_placeholder">Поиск маршрутов</string>
+    <string name="type_bus">Автобус</string>
+    <string name="type_tram">Трамвай</string>
+    <string name="type_train">Поезд</string>
+    <string name="type_regional">Региональный автобус</string>
+    <string name="update_gtfs">Обновить</string>
+    <string name="gtfs_status">Статус базы данных</string>
+    <string name="ready_database">Обновлена</string>
+    <string name="database_update_recommended">Рекомендуется обновление</string>
+    <string name="notready_database">База данных не готова</string>
+    <string name="update_always">Всегда (рекмендовано)</string>
+    <string name="wifi_only">Только по WiFi</string>
+    <string name="only_manual">Вручную</string>
+    <string name="data_autoupdate">Автообновление данных</string>
+    <string name="data_and_update">Данные и обновление</string>
+    <string name="destination_to">На:</string>
+</resources>
