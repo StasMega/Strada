@@ -14,7 +14,7 @@ android {
         minSdk = 30
         targetSdk = 35
         versionCode = 1
-        versionName = "v0.4.1-beta"
+        versionName = "v0.5-beta"
     }
 
     buildFeatures { compose = true }
@@ -31,7 +31,7 @@ android {
     applicationVariants.all {
         outputs.all {
             val output = this as com.android.build.gradle.internal.api.ApkVariantOutputImpl
-            output.outputFileName = "my-app-${name}-${versionName}.apk"
+            output.outputFileName = "strada-${versionName}.apk"
         }
     }
 
