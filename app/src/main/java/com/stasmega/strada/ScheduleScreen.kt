@@ -1,8 +1,6 @@
 package com.stasmega.strada
 
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.*
@@ -12,102 +10,97 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ScheduleScreen(viewModel: BusViewModel, onRouteClick: (String) -> Unit) {
-    val isDark = isSystemInDarkTheme() || viewModel.themeMode.intValue == AppCompatDelegate.MODE_NIGHT_YES
-    val isMonet = viewModel.isMonetEnabled.value
-
-    val headerColor = when {
-        isMonet -> MaterialTheme.colorScheme.primary
-        isDark -> MaterialTheme.colorScheme.surface
-        else -> StradaBlue
-    }
-
-    var searchQuery by remember { mutableStateOf("") }
-    var active by remember { mutableStateOf(false) }
-    val allRoutes by viewModel.routes.collectAsState()
+fun ScheduleBottomSheet(
+    viewModel: BusViewModel,
+    onRouteClick: (String) -> Unit,
+    onFocusSearch: () -> Unit
+) {
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val filteredRoutes by viewModel.filteredRoutes.collectAsState()
     val recentRoutes by viewModel.recentRoutes.collectAsState()
-    val loadingStatus by viewModel.loadingStatus.collectAsState()
+    val favoriteRoutesIds by viewModel.favoriteRoutes.collectAsState()
+    val allRoutes by viewModel.routes.collectAsState()
     val listState = rememberLazyListState()
 
-    val filteredRoutes by remember(searchQuery, allRoutes) {
-        derivedStateOf {
-            if (searchQuery.isBlank()) allRoutes
-            else allRoutes.filter { it.number.contains(searchQuery, true) || it.name.contains(searchQuery, true) }
-        }
+    val favRoutes = remember(favoriteRoutesIds, allRoutes) {
+        allRoutes.filter { favoriteRoutesIds.contains(it.number) }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-
-        LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 240.dp, bottom = 100.dp)) {
-            items(filteredRoutes, key = { it.id }) { route ->
-                RouteTravelItem(route) { viewModel.addToRecent(route); onRouteClick(route.id) }
-            }
+    Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.95f)) {
+        Box(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            TextField(
+                value = searchQuery,
+                onValueChange = { viewModel.updateSearchQuery(it) },
+                modifier = Modifier.fillMaxWidth().onFocusChanged { if (it.isFocused) onFocusSearch() },
+                placeholder = { Text("Куда едем?", fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { viewModel.updateSearchQuery("") }) { Icon(Icons.Default.Close, null) } },
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(0.4f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(0.4f),
+                    focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent
+                ),
+                shape = RoundedCornerShape(16.dp), singleLine = true
+            )
         }
 
-        if (active) {
-            Box(modifier = Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures(onTap = { active = false }) })
-        }
-
-        Surface(modifier = Modifier.fillMaxWidth(), color = headerColor, shadowElevation = if (isDark && !isMonet) 0.dp else 8.dp) {
-            Column(modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(bottom = 20.dp)) {
-                Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 12.dp)) {
-                    Text("Куда едем?", style = MaterialTheme.typography.displaySmall, color = Color.White)
-                    Text("Весь транспорт Таллина под рукой", style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(0.7f))
-                }
-
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    DockedSearchBar(
-                        modifier = Modifier.fillMaxWidth(),
-                        query = searchQuery,
-                        onQueryChange = { searchQuery = it },
-                        onSearch = { active = false },
-                        active = active,
-                        onActiveChange = { active = it },
-                        placeholder = { Text("Номер маршрута или остановка") },
-                        leadingIcon = { Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.primary) },
-                        trailingIcon = { if (searchQuery.isNotEmpty()) IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Close, null) } },
-                        shape = RoundedCornerShape(24.dp),
-                        colors = SearchBarDefaults.colors(containerColor = if (isDark) MaterialTheme.colorScheme.surfaceVariant.copy(0.4f) else Color.White)
-                    ) {
-                        if (searchQuery.isBlank() && recentRoutes.isNotEmpty()) {
-                            Text("НЕДАВНИЕ ПОИСКИ", style = MaterialTheme.typography.labelLarge,  color = MaterialTheme.colorScheme.primary,  letterSpacing = 1.5.sp, modifier = Modifier.padding(start = 20.dp, top = 20.dp, bottom = 8.dp))
-                            recentRoutes.forEach { route ->
-                                ListItem(headlineContent = { Text(route.name) }, supportingContent = { Text("№${route.number}") }, leadingContent = { Icon(Icons.Default.History, null) }, modifier = Modifier.clickable { active = false; viewModel.addToRecent(route); onRouteClick(route.id) })
-                            }
-                        } else {
-                            filteredRoutes.take(10).forEach { route ->
-                                ListItem(headlineContent = { Text(route.name) }, supportingContent = { Text("№${route.number}") }, modifier = Modifier.clickable { active = false; viewModel.addToRecent(route); onRouteClick(route.id) })
-                            }
-                        }
+        LazyColumn(state = listState, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(bottom = 40.dp)) {
+            if (searchQuery.isBlank()) {
+                if (favRoutes.isNotEmpty()) {
+                    item { Text("ИЗБРАННОЕ", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 24.dp, bottom = 8.dp, top = 8.dp)) }
+                    items(favRoutes, key = { "fav_${it.id}" }) { route ->
+                        RouteTravelItem(route, isFavorite = true, onFavoriteClick = { viewModel.toggleFavorite(route.number) }) { viewModel.addToRecent(route); onRouteClick(route.id) }
                     }
+                    item { Spacer(Modifier.height(16.dp)) }
                 }
+
+                if (recentRoutes.isNotEmpty()) {
+                    item { Text("НЕДАВНИЕ", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 24.dp, bottom = 8.dp, top = 8.dp)) }
+                    items(recentRoutes, key = { "recent_${it.id}" }) { route ->
+                        RouteTravelItem(route, isFavorite = favoriteRoutesIds.contains(route.number), onFavoriteClick = { viewModel.toggleFavorite(route.number) }) { viewModel.addToRecent(route); onRouteClick(route.id) }
+                    }
+                    item { Spacer(Modifier.height(16.dp)) }
+                }
+
+                item { Text("ВСЕ МАРШРУТЫ", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)) }
+            }
+            items(filteredRoutes, key = { it.id }) { route ->
+                RouteTravelItem(route, isFavorite = favoriteRoutesIds.contains(route.number), onFavoriteClick = { viewModel.toggleFavorite(route.number) }) { viewModel.addToRecent(route); onRouteClick(route.id) }
             }
         }
     }
 }
 
 @Composable
-fun RouteTravelItem(route: RouteInfo, onClick: () -> Unit) {
+fun RouteTravelItem(route: RouteInfo, isFavorite: Boolean, onFavoriteClick: () -> Unit, onClick: () -> Unit) {
     val color = when {
         route.type == "Tram" -> Color(0xFFFF3025)
         route.isRegional -> Color(0xFF2790E6)
         route.type == "Train" -> Color(0xFFFF6000)
         else -> Color(0xFF2E7D32)
     }
-    Surface(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).bounceClick().clickable { onClick() }, shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, Color.Black.copy(0.04f))) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).clickable { onClick() },
+        shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, Color.Black.copy(0.04f))
+    ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(modifier = Modifier.size(48.dp).background(color.copy(0.1f), CircleShape), contentAlignment = Alignment.Center) { Text(route.number, color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium) }
             Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) { Text(route.name.ifBlank{"Маршрут ${route.number}"}, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(if(route.type=="Tram") "Трамвай" else if(route.type=="Train") "Поезд" else "Автобус", style = MaterialTheme.typography.bodySmall, color = Color.Gray) }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Color.LightGray, modifier = Modifier.size(20.dp))
+            Column(Modifier.weight(1f)) {
+                Text(route.name.ifBlank{"Маршрут ${route.number}"}, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(if(route.type=="Tram") "Трамвай" else if(route.type=="Train") "Поезд" else "Автобус", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            }
+            IconButton(onClick = onFavoriteClick) {
+                Icon(if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder, contentDescription = "Favorite", tint = if (isFavorite) Color(0xFFFFD700) else Color.LightGray)
+            }
         }
     }
 }

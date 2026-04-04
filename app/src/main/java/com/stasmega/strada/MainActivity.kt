@@ -11,11 +11,6 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -25,21 +20,18 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 
-// --- КОНСТАНТЫ СТИЛЯ ---
 val StradaBlue = Color(0xFF0A48FF)
 val StradaCharcoal = Color(0xFF31343B)
+val ProfileBgColor = Color(0xFFEFEFEF)
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,64 +42,55 @@ class MainActivity : AppCompatActivity() {
             val nav = rememberNavController()
 
             StradaTheme(viewModel = vm) {
-                val navBackStackEntry by nav.currentBackStackEntryAsState()
-                val currentRoute = navBackStackEntry?.destination?.route
-                val isDetail = currentRoute?.startsWith("route_detail") ?: false
-
-                Scaffold(
-                    bottomBar = {
-                        if (!isDetail) {
-                            NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp) {
-                                val tabs = listOf(
-                                    Triple("map", Icons.Default.Map, R.string.nav_map),
-                                    Triple("schedule", Icons.Default.List, R.string.nav_schedule),
-                                    Triple("settings", Icons.Default.Settings, R.string.nav_settings)
-                                )
-                                tabs.forEach { (route, icon, labelRes) ->
-                                    NavigationBarItem(
-                                        selected = currentRoute == route,
-                                        icon = { Icon(icon, null) },
-                                        label = { Text(stringResource(labelRes), style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp)) },
-                                        onClick = {
-                                            if (currentRoute != route) nav.navigate(route) {
-                                                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                                                launchSingleTop = true
-                                                restoreState = true
-                                            }
-                                        }
-                                    )
-                                }
-                            }
+                NavHost(
+                    navController = nav,
+                    // Проверяем первый запуск для выбора стартового экрана
+                    startDestination = if (vm.isFirstLaunch.value) "welcome" else "map"
+                ) {
+                    // 1. Экран приветствия
+                    composable("welcome") {
+                        WelcomeScreen { name ->
+                            vm.setUserName(name)
+                            nav.navigate("map") { popUpTo("welcome") { inclusive = true } }
                         }
                     }
-                ) { padding ->
-                    NavHost(
-                        navController = nav,
-                        startDestination = "map",
-                        modifier = Modifier.padding(bottom = if (isDetail) 0.dp else padding.calculateBottomPadding())
+
+                    // 2. Главный экран (Карта)
+                    composable("map",
+                        enterTransition = { fadeIn(tween(200)) },
+                        exitTransition = { fadeOut(tween(200)) }
                     ) {
-                        composable("map",
-                            enterTransition = { fadeIn(tween(150)) },
-                            exitTransition = { fadeOut(tween(150)) }
-                        ) { MapScreen(vm) }
+                        MapScreen(
+                            viewModel = vm,
+                            onNavigateToProfile = { nav.navigate("profile") },
+                            onNavigateToRouteDetail = { id -> nav.navigate("route_detail/$id") }
+                        )
+                    }
 
-                        composable("schedule",
-                            enterTransition = { fadeIn(tween(150)) },
-                            exitTransition = { fadeOut(tween(150)) }
-                        ) { ScheduleScreen(vm) { id -> nav.navigate("route_detail/$id") } }
+                    // 3. Экран профиля
+                    composable("profile",
+                        enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(300)) },
+                        exitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(300)) }
+                    ) {
+                        ProfileScreen(
+                            viewModel = vm,
+                            onBack = { nav.popBackStack() },
+                            onNavigateToMyTransport = { nav.navigate("my_transport") }
+                        )
+                    }
 
-                        composable("settings",
-                            enterTransition = { fadeIn(tween(150)) },
-                            exitTransition = { fadeOut(tween(150)) }
-                        ) { SettingsScreen(vm) }
+                    // 4. Экран "Мой транспорт"
+                    composable("my_transport") {
+                        MyTransportScreen(vm, onBack = { nav.popBackStack() })
+                    }
 
-                        composable("route_detail/{id}",
-                            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(200)) },
-                            exitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(200)) }
-                        ) { backStackEntry ->
-                            val id = backStackEntry.arguments?.getString("id") ?: ""
-                            RouteDetailScreen(vm, id, onBack = { nav.popBackStack() })
-                        }
+                    // 5. Детали маршрута
+                    composable("route_detail/{id}",
+                        enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(200)) },
+                        exitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(200)) }
+                    ) { backStackEntry ->
+                        val id = backStackEntry.arguments?.getString("id") ?: ""
+                        RouteDetailScreen(vm, id, onBack = { nav.popBackStack() })
                     }
                 }
             }
@@ -115,20 +98,15 @@ class MainActivity : AppCompatActivity() {
     }
 }
 
-/**
- * ПРУЖИННАЯ АНИМАЦИЯ (Material Expressive)
- */
 fun Modifier.bounceClick() = composed {
     var isPressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.95f else 1f,
+        targetValue = if (isPressed) 0.92f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
         label = ""
     )
     this.graphicsLayer(scaleX = scale, scaleY = scale)
-        .pointerInput(Unit) {
-            detectTapGestures(onPress = { isPressed = true; tryAwaitRelease(); isPressed = false })
-        }
+        .pointerInput(Unit) { detectTapGestures(onPress = { isPressed = true; tryAwaitRelease(); isPressed = false }) }
 }
 
 @Composable
@@ -139,9 +117,8 @@ fun StradaTheme(viewModel: BusViewModel, content: @Composable () -> Unit) {
         AppCompatDelegate.MODE_NIGHT_NO -> false
         else -> isSystemInDarkTheme()
     }
-
     val useAmoled = viewModel.isAmoledEnabled.value && isDark
-    val backgroundCol = if (useAmoled) Color.Black else if (isDark) StradaCharcoal else Color(0xFFF5F5F7)
+    val backgroundCol = if (useAmoled) Color.Black else if (isDark) StradaCharcoal else ProfileBgColor
 
     val colorScheme = when {
         viewModel.isMonetEnabled.value && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
@@ -152,17 +129,18 @@ fun StradaTheme(viewModel: BusViewModel, content: @Composable () -> Unit) {
         else -> lightColorScheme(primary = StradaBlue, background = backgroundCol, surface = backgroundCol, secondaryContainer = StradaBlue.copy(0.1f))
     }
 
-    val Geist = FontFamily(Font(R.font.geist_medium, FontWeight.Medium), Font(R.font.geist_bold, FontWeight.Bold))
+    // Переименовали в маленькую букву geist, чтобы линтер не ругался
+    val geist = FontFamily(Font(R.font.geist_medium, FontWeight.Medium), Font(R.font.geist_bold, FontWeight.Bold))
 
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography(
-            displaySmall = TextStyle(fontFamily = Geist, fontWeight = FontWeight.Bold, fontSize = 32.sp),
-            titleLarge = TextStyle(fontFamily = Geist, fontWeight = FontWeight.Bold, fontSize = 20.sp),
-            titleMedium = TextStyle(fontFamily = Geist, fontWeight = FontWeight.Medium, fontSize = 17.sp),
-            bodyLarge = TextStyle(fontFamily = Geist, fontWeight = FontWeight.Medium, fontSize = 16.sp),
-            labelLarge = TextStyle(fontFamily = Geist, fontWeight = FontWeight.Bold),
-            labelSmall = TextStyle(fontFamily = Geist, fontWeight = FontWeight.Medium)
+            displaySmall = TextStyle(fontFamily = geist, fontWeight = FontWeight.Bold, fontSize = 32.sp),
+            titleLarge = TextStyle(fontFamily = geist, fontWeight = FontWeight.Bold, fontSize = 20.sp),
+            titleMedium = TextStyle(fontFamily = geist, fontWeight = FontWeight.Medium, fontSize = 17.sp),
+            bodyLarge = TextStyle(fontFamily = geist, fontWeight = FontWeight.Medium, fontSize = 16.sp),
+            labelLarge = TextStyle(fontFamily = geist, fontWeight = FontWeight.Bold),
+            labelSmall = TextStyle(fontFamily = geist, fontWeight = FontWeight.Medium)
         ),
         content = content
     )
