@@ -4,11 +4,9 @@ Strada is a lightweight real‑time public transport map for Tallinn, built with
 
 ## Highlights
 - Real‑time vehicle tracking (buses and trams)
-- MapLibre + OpenFreeMap vector styles (light/dark) bundled in `assets` and switched live without losing layers.
+- MapLibre
 - Dynamic route icons
 - Monet / Material You dynamic colors (Android 12+) + manual theme modes. 
-- English and Russian language available (Estonian coming soon)
-- GTFS ZIP parsing on the fly (routes/stops) via `ZipInputStream` (no unzip-to-disk step).
 
 
 ## Data sources
