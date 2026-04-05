@@ -15,7 +15,7 @@ Strada is a lightweight real‑time public transport map for Tallinn, built with
 
 ## Data sources
 - Live GPS: `https://transport.tallinn.ee/gps.txt` 
-- GTFS: `~~https://transport.tallinn.ee/data/gtfs.zip~~` `https://eu-gtfs.remix.com/tallinn.zip`
+- GTFS: ~~`https://transport.tallinn.ee/data/gtfs.zip`~~ `https://eu-gtfs.remix.com/tallinn.zip`
 
 
 ## Status
